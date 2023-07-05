@@ -1,0 +1,224 @@
+import csv
+import tkinter as tk
+from tkinter import messagebox
+import re
+
+
+class Book:
+    def __init__(self, title, author, year, is_borrowed):
+        self.title = title
+        self.author = author
+        self.year = year
+        self.is_borrowed = is_borrowed
+
+
+def load_books():
+    books = []
+    try:
+        with open("books.csv", "r", encoding="utf-8-sig") as file:
+            reader = csv.reader(file)
+            next(reader)  # Skip the header row
+            for row in reader:
+                title = row[0]
+                author = row[1]
+                year = int(row[2])
+                is_borrowed = bool(row[3])
+                book = Book(title, author, year, is_borrowed)
+                books.append(book)
+    except FileNotFoundError:
+        messagebox.showinfo("提示", "没有找到之前的书籍数据。")
+    return books
+
+
+def save_books():
+    try:
+        with open("books.csv", "w", newline="", encoding="utf-8-sig") as file:
+            writer = csv.writer(file)
+            writer.writerow(["书名", "作者", "出版年份", "是否借出"])
+            for book in books:
+                writer.writerow([book.title, book.author, book.year, book.is_borrowed])
+        messagebox.showinfo("提示", "书籍数据保存成功。")
+    except IOError:
+        messagebox.showerror("错误", "保存书籍数据时出错。")
+
+
+def add_book():
+    title = entry_title.get()
+    author = entry_author.get()
+    year = int(entry_year.get())
+    is_borrowed = False
+    book = Book(title, author, year, is_borrowed)
+    books.append(book)
+    messagebox.showinfo("成功", "添加书籍成功！")
+    entry_title.delete(0, tk.END)
+    entry_author.delete(0, tk.END)
+    entry_year.delete(0, tk.END)
+
+
+def search_book():
+    search_query = entry_search.get().lower()
+    found_books = []
+    for book in books:
+        if re.search(search_query, book.title.lower()) or re.search(search_query, book.author.lower()):
+            found_books.append(book)
+    display_search_results(found_books)
+
+
+def display_search_results(found_books):
+    display_listbox.delete(0, tk.END)
+    if found_books:
+        for book in found_books:
+            display_listbox.insert(tk.END, f"书名：{book.title}\n")
+            display_listbox.insert(tk.END, f"作者：{book.author}\n")
+            display_listbox.insert(tk.END, f"出版年份：{book.year}\n")
+            display_listbox.insert(tk.END, f"是否借出：{'是' if book.is_borrowed else '否'}\n")
+            display_listbox.insert(tk.END, "-" * 20 + "\n")
+    else:
+        display_listbox.insert(tk.END, "没有找到匹配的书籍。\n")
+
+
+def borrow_book():
+    selected_index = display_listbox.curselection()
+    if selected_index:
+        selected_book = display_listbox.get(selected_index[0])
+        for book in books:
+            if book.title in selected_book:
+                if book.is_borrowed:
+                    messagebox.showinfo("提示", "该书已经被借出。")
+                else:
+                    book.is_borrowed = True
+                    messagebox.showinfo("成功", "借书成功！")
+                    save_books()
+                    display_books()
+    else:
+        messagebox.showinfo("提示", "请选择要借出的书籍。")
+
+
+def return_book():
+    selected_index = display_listbox.curselection()
+    if selected_index:
+        selected_book = display_listbox.get(selected_index[0])
+        for book in books:
+            if book.title in selected_book:
+                if not book.is_borrowed:
+                    messagebox.showinfo("提示", "该书未被借出。")
+                else:
+                    book.is_borrowed = False
+                    messagebox.showinfo("成功", "归还书籍成功！")
+                    save_books()
+                    display_books()
+    else:
+        messagebox.showinfo("提示", "请选择要归还的书籍。")
+
+
+def display_books():
+    display_listbox.delete(0, tk.END)
+    for book in books:
+        display_listbox.insert(tk.END, f"书名：{book.title}\n")
+        display_listbox.insert(tk.END, f"作者：{book.author}\n")
+        display_listbox.insert(tk.END, f"出版年份：{book.year}\n")
+        display_listbox.insert(tk.END, f"是否借出：{'是' if book.is_borrowed else '否'}\n")
+        display_listbox.insert(tk.END, "-" * 20 + "\n")
+
+
+def modify_book():
+    selected_index = display_listbox.curselection()
+    if selected_index:
+        selected_book = display_listbox.get(selected_index[0])
+        for book in books:
+            if book.title in selected_book:
+                # 显示修改图书信息的窗口
+                modify_window = tk.Toplevel()
+                modify_window.title("修改图书信息")
+
+                label_title = tk.Label(modify_window, text="书名:")
+                label_title.grid(row=0, column=0, padx=10, pady=5)
+                entry_title = tk.Entry(modify_window)
+                entry_title.grid(row=0, column=1, padx=10, pady=5)
+
+                label_author = tk.Label(modify_window, text="作者:")
+                label_author.grid(row=1, column=0, padx=10, pady=5)
+                entry_author = tk.Entry(modify_window)
+                entry_author.grid(row=1, column=1, padx=10, pady=5)
+
+                label_year = tk.Label(modify_window, text="出版年份:")
+                label_year.grid(row=2, column=0, padx=10, pady=5)
+                entry_year = tk.Entry(modify_window)
+                entry_year.grid(row=2, column=1, padx=10, pady=5)
+
+                button_save = tk.Button(modify_window, text="保存修改", command=lambda: save_modified_book(book))
+                button_save.grid(row=3, column=0, columnspan=2, padx=10, pady=5)
+
+                entry_title.insert(tk.END, book.title)
+                entry_author.insert(tk.END, book.author)
+                entry_year.insert(tk.END, book.year)
+
+    else:
+        messagebox.showinfo("提示", "请选择要修改的书籍。")
+
+
+def save_modified_book(book):
+    book.title = entry_title.get()
+    book.author = entry_author.get()
+    book.year = int(entry_year.get())
+    messagebox.showinfo("成功", "修改图书信息成功！")
+    save_books()
+    display_books()
+
+
+def main():
+    global entry_title, entry_author, entry_year, entry_search, display_listbox, books
+
+    books = load_books()
+
+    window = tk.Tk()
+    window.title("图书管理系统")
+
+    label_title = tk.Label(window, text="书名:")
+    label_title.grid(row=0, column=0, padx=10, pady=5)
+    entry_title = tk.Entry(window)
+    entry_title.grid(row=0, column=1, padx=10, pady=5)
+
+    label_author = tk.Label(window, text="作者:")
+    label_author.grid(row=1, column=0, padx=10, pady=5)
+    entry_author = tk.Entry(window)
+    entry_author.grid(row=1, column=1, padx=10, pady=5)
+
+    label_year = tk.Label(window, text="出版年份:")
+    label_year.grid(row=2, column=0, padx=10, pady=5)
+    entry_year = tk.Entry(window)
+    entry_year.grid(row=2, column=1, padx=10, pady=5)
+
+    button_add = tk.Button(window, text="添加书籍", command=add_book)
+    button_add.grid(row=3, column=0, padx=10, pady=5)
+
+    button_display = tk.Button(window, text="显示书籍", command=display_books)
+    button_display.grid(row=3, column=1, padx=10, pady=5)
+
+    label_search = tk.Label(window, text="搜索书籍:")
+    label_search.grid(row=4, column=0, padx=10, pady=5)
+    entry_search = tk.Entry(window)
+    entry_search.grid(row=4, column=1, padx=10, pady=5)
+    button_search = tk.Button(window, text="搜索", command=search_book)
+    button_search.grid(row=4, column=2, padx=10, pady=5)
+
+    display_listbox = tk.Listbox(window, height=10, width=40)
+    display_listbox.grid(row=5, columnspan=3, padx=10, pady=5)
+
+    button_borrow = tk.Button(window, text="借出", command=borrow_book)
+    button_borrow.grid(row=6, column=0, padx=10, pady=5)
+
+    button_return = tk.Button(window, text="归还", command=return_book)
+    button_return.grid(row=6, column=1, padx=10, pady=5)
+
+    button_modify = tk.Button(window, text="修改", command=modify_book)
+    button_modify.grid(row=6, column=2, padx=10, pady=5)
+
+    button_save = tk.Button(window, text="保存数据", command=save_books)
+    button_save.grid(row=7, column=0, padx=10, pady=5)
+
+    window.mainloop()
+
+
+if __name__ == "__main__":
+    main()
